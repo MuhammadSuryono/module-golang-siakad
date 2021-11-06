@@ -1,8 +1,10 @@
 package db
 
 import (
+	"database/sql"
 	"fmt"
 	"os"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"gorm.io/driver/mysql"
@@ -12,6 +14,9 @@ import (
 )
 
 var Connection *gorm.DB
+
+const dbMaxIdleConns = 10
+const dbMaxConns = 100
 
 type ConnectionHandler struct {
 	DB_HOST   string
@@ -24,6 +29,8 @@ type ConnectionHandler struct {
 }
 
 func (con ConnectionHandler) CreateNewConnection() {
+	log.WithField("Connection", con.DB_DRIVER).Info("=> open db connection")
+
 	switch con.DB_DRIVER {
 	case "mysql":
 		con.mysqlConnection()
@@ -111,4 +118,13 @@ func (con ConnectionHandler) sqlServerConnection() {
 	Connection = db
 
 	log.Info(fmt.Sprintf("Database %s Connected", con.DB_DRIVER))
+}
+
+func CreateConnectionPool(conn *gorm.DB) *sql.DB {
+	sqlDb, _ := conn.DB()
+	sqlDb.SetMaxIdleConns(dbMaxIdleConns)
+	sqlDb.SetMaxOpenConns(dbMaxConns)
+	sqlDb.SetConnMaxLifetime(time.Hour)
+
+	return sqlDb
 }
